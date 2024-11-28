@@ -43,6 +43,6 @@ default = "t2.micro"
 variable "ec2_ami_id" {
 description = "The AMI ID for the EC2 instance"
 type = string
-default = "ami-0ebfd941bbafe70c6"
+default = "ami-0866a3c8686eaeeba"
 }
 

@@ -16,7 +16,7 @@ terraform {
     }
   }
   backend "s3" {
-	bucket= "custom-terraform-state-bucket-123456-f3699416"
+	bucket= "custom-terraform-state-bucket-123456-ddeb6dbe"
 	key = "aws-backend/terraform.tfstate"
 	region = "us-east-1" # AWS region
 	dynamodb_table = "custom-terraform-state-locks-123456"
@@ -100,7 +100,7 @@ resource "aws_key_pair" "deployer_key" {
 
 # Store the SSH private key in S3
 resource "aws_s3_bucket_object" "private_key_object" {
-  bucket               = "custom-terraform-state-bucket-123456-f3699416"
+  bucket               = "custom-terraform-state-bucket-123456-ddeb6dbe"
   key                  = "${var.ssh_key_name}.pem"
   content              = tls_private_key.example_ssh_key.private_key_pem
   acl                  = "private"
@@ -166,4 +166,60 @@ resource "aws_instance" "public_instance" {
   tags = {
     Name = "PublicInstance"
   }
+}
+# Create a DB subnet group
+resource "aws_db_subnet_group" "mydb_subnet_group" {
+  name       = "mydb_subnet_group"
+  subnet_ids = [
+    aws_subnet.public_subnet_1.id,
+    aws_subnet.public_subnet_2.id
+  ]
+  tags = {
+    Name = "mydb_subnet_group"
+  }
+}
+# Create an RDS MySQL database instance
+resource "aws_db_instance" "mydb" {
+  allocated_storage       = 20                       # Minimum storage size for MySQL
+  engine                = "mysql"
+  engine_version        = "8.0.35"                  # Specify the MySQL engine version
+  instance_class        = "db.t3.micro"             # Free-tier eligible instance type
+  identifier            = "mydb"
+  username              = "dbuser"                  # Master username
+  password              = "DBpassword2024"          # Master password
+  db_subnet_group_name  = aws_db_subnet_group.mydb_subnet_group.name
+  vpc_security_group_ids = [aws_security_group.web_sg.id]
+  publicly_accessible    = true                      # Restrict public access
+  multi_az              = false                     # Single-AZ deployment
+  skip_final_snapshot    = true                      # Skip snapshot on deletion
+  tags = {
+    Name = "enis_tp"
+  }
+}
+# Allow inbound RDS traffic (e.g., MySQL on port 3306)
+resource "aws_security_group_rule" "allow_rds_inbound" {
+  type                = "ingress"
+  security_group_id   = aws_security_group.web_sg.id
+  from_port           = 3306                       # Change this to match your database port
+  to_port             = 3306                       # Same as above
+  protocol            = "tcp"
+  cidr_blocks         = ["0.0.0.0/0"]              # For production, replace this with a specific IP or CIDR block
+}
+# Allow inbound to backend on port 8000
+resource "aws_security_group_rule" "allow_backend_inbound" {
+  type                = "ingress"
+  security_group_id   = aws_security_group.web_sg.id
+  from_port           = 8000
+  to_port             = 8000                       # Same as above
+  protocol            = "tcp"
+  cidr_blocks         = ["0.0.0.0/0"]              # For production, replace this with a specific IP or CIDR block
+}
+# Allow inbound HTTP traffic on port 81 to access the final application
+resource "aws_security_group_rule" "allow_web_http_inbound-81" {
+  type                = "ingress"
+  security_group_id   = aws_security_group.web_sg.id
+  from_port           = 81
+  to_port             = 81
+  protocol            = "tcp"
+  cidr_blocks         = ["0.0.0.0/0"]
 }
