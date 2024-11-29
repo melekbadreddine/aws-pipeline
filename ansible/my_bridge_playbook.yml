@@ -1,0 +1,26 @@
+- name: Start Docker containers
+  hosts: servers
+  become: yes
+  vars_files:
+    - ansible-vars.yaml
+  tasks:
+    - name: Create Docker Network
+      docker_network:
+        name: "{{ docker_network_name }}"
+        state: present
+
+    - name: Copy Docker Compose file to the EC2 instance
+      copy:
+        src: "{{ compose_local_path }}"
+        dest: "{{ compose_remote_path }}"
+
+    - name: Start Docker containers from Docker Compose
+      docker_compose:
+        project_src: "{{ project_src_path }}"
+        state: present 
+
+    - name: Run makemigrations inside backend container
+      command: docker exec {{ backend_container_name }} python manage.py makemigrations
+
+    - name: Run migrate inside backend container
+      command: docker exec {{ backend_container_name }} python manage.py migrate
