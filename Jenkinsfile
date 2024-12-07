@@ -11,6 +11,8 @@ pipeline {
       ECR_REPO_URL = '682033469889.dkr.ecr.us-east-1.amazonaws.com/enis-app'
       ECR_REPO_NAME = 'enis-app'
       IMAGE_REPO = "${ECR_REPO_URL}/${ECR_REPO_NAME}"
+      IMAGE_REPO_FRONTEND = "${IMAGE_REPO}:frontend-app-1.0"
+      IMAGE_REPO_BACKEND = "${IMAGE_REPO}:backend-app-1.0" 
       AWS_REGION = "us-east-1"
     }
     
@@ -118,21 +120,16 @@ pipeline {
             }
         }
         stage('Build Frontend Docker Image') {
-	    steps {
-		dir('frontend') {
-		    script {
-		        echo 'Building Frontend Docker Image...'
-		        try {
-		            def frontendImage = docker.build('frontend-app', '--progress=plain .')
-		            echo "Built Image: ${frontendImage.id}"
-		        } catch (Exception e) {
-		            echo "Error during frontend image build: ${e}"
-		            error "Build failed"
-		        }
-		    }
-		}
-	    }
-	}
+            steps {
+                    dir('frontend') {
+                        script {
+                            echo 'Building Frontend Docker Image...'
+                            def frontendImage = docker.build('frontend-app')
+                            echo "Built Image: ${frontendImage.id}"
+                        }
+                    }
+                }
+            }
         stage('Build Backend Docker Image') {
             steps {
                     dir('backend') {
