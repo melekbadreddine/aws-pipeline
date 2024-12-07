@@ -118,16 +118,21 @@ pipeline {
             }
         }
         stage('Build Frontend Docker Image') {
-            steps {
-                    dir('frontend') {
-                        script {
-                            echo 'Building Frontend Docker Image...'
-                            def frontendImage = docker.build('frontend-app')
-                            echo "Built Image: ${frontendImage.id}"
-                        }
-                    }
-                }
-            }
+	    steps {
+		dir('frontend') {
+		    script {
+		        echo 'Building Frontend Docker Image...'
+		        try {
+		            def frontendImage = docker.build('frontend-app', '--progress=plain .')
+		            echo "Built Image: ${frontendImage.id}"
+		        } catch (Exception e) {
+		            echo "Error during frontend image build: ${e}"
+		            error "Build failed"
+		        }
+		    }
+		}
+	    }
+	}
         stage('Build Backend Docker Image') {
             steps {
                     dir('backend') {
