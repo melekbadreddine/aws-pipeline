@@ -141,21 +141,50 @@
   gather_facts: False
   become: yes
   vars_files:
-  - ansible-vars.yaml
+    - ansible-vars.yaml
   tasks:
-  - name: Create Docker Network
-    docker_network:
-      name: "{{ docker_network_name }}"
-      state: present
-  - name: Copy Docker Compose file to the EC2 instance
-    copy:
-      src: "{{ compose_local_path }}"
-      dest: "{{ compose_remote_path }}"
-  - name: Start Docker containers from Docker Compose
-    shell: |
-      docker-compose up -d
-    args:
-      chdir: "{{ project_src_path }}"
+    - name: Create Docker Network
+      docker_network:
+        name: "{{ docker_network_name }}"
+        state: present
+    - name: Copy Docker Compose file to the EC2 instance
+      copy:
+        src: "{{ compose_local_path }}"
+        dest: "{{ compose_remote_path }}"
+    - name: Start Docker containers from Docker Compose
+      shell: |
+        docker-compose up -d
+      args:
+        chdir: "{{ project_src_path }}"
+    - name: Wait for backend container to be ready
+      shell: |
+        attempt=1
+        max_attempts=30
+        until docker container inspect {{ backend_container_name }} --format '{% raw %}{{.State.Running}}{% endraw %}' 2>/dev/null | grep -q "true" || [ $attempt -eq $max_attempts ]
+        do
+          echo "Waiting for container to be ready... (attempt $attempt)"
+          sleep 5
+          attempt=$((attempt + 1))
+        done
+      register: wait_result
+      failed_when: wait_result.rc != 0
+    - name: Check container status
+      shell: docker ps -a --filter "name={{ backend_container_name }}" --format "{% raw %}{{.Status}}{% endraw %}"
+      register: container_status
+    - name: Verify database connection
+      shell: |
+        docker exec {{ backend_container_name }} python -c "
+        import os
+        import django
+        django.setup()
+        from django.db import connections
+        connections['default'].ensure_connection()
+        "
+      ignore_errors: yes
+      register: db_connection
+    - name: Debug container status
+      debug:
+        var: container_status.stdout
   - name: Run makemigrations inside backend container
     command: docker exec {{ backend_container_name }} python manage.py makemigrations
   - name: Run migrate inside backend container
