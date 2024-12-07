@@ -180,7 +180,7 @@ pipeline {
         stage('Download SSH Key from S3') {
             steps {
                 script {
-                    dir('enis-ansible') {
+                    dir('ansible') {
                         sh """
                         # Check and delete the existing key if it exists
                         if [ -f "deployer_key.pem" ]; then
