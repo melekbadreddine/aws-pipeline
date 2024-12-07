@@ -3,7 +3,6 @@
   hosts: servers
   gather_facts: False
   become: yes
-
   tasks:
     - name: Ensure SSH connection is available
       ansible.builtin.wait_for:
@@ -21,42 +20,34 @@
   become: yes
   vars_files:
     - ansible-vars.yaml
-
   tasks:
     - name: Update apt cache manually
       apt:
         update_cache: yes
         cache_valid_time: "{{ cache_time }}"
-
     - name: Install Docker
       apt:
         name: "{{ docker_package_name }}"
         update_cache: yes
         state: present
-
     - name: Install Docker-compose
       apt:
         name: docker-compose
         state: present
-
     - name: Ensure Docker service is started
       systemd:
         name: "{{ docker_service_name }}"
         state: started
         enabled: yes
-
     - name: Check Docker version
       command: docker --version
       register: docker_version_output
-
     - name: Display Docker version
       debug:
         msg: "Docker version: {{ docker_version_output.stdout }}"
-
     - name: Check Docker Compose version
       command: docker-compose --version
       register: docker_compose_version_output
-
     - name: Display Docker Compose version
       debug:
         msg: "Docker Compose version: {{ docker_compose_version_output.stdout }}"
@@ -77,28 +68,23 @@
       package:
         name: curl
         state: present
-
     - name: Ensure unzip is installed
       package:
         name: unzip
         state: present
-
     - name: Check if AWS CLI is installed
       command: "aws --version"
       register: aws_cli_check
       ignore_errors: true
-
     - name: Download AWS CLI installation script using curl
       command: curl -o /tmp/awscliv2.zip https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip
       when: aws_cli_check.failed
-
     - name: Unzip AWS CLI installation package
       unarchive:
         src: "/tmp/awscliv2.zip"
         dest: "/tmp/"
         remote_src: yes
       when: aws_cli_check.failed
-
     - name: Run AWS CLI installer
       command: "/tmp/aws/install -i /usr/local/aws-cli -b /usr/local/bin --update"
       when: aws_cli_check.failed
@@ -107,12 +93,13 @@
       register: aws_cli_version
     - debug:
         msg: "AWS CLI version: {{ aws_cli_version.stdout }}"
+
 - name: Pull Docker image for the frontend from ECR to EC2 instance
   hosts: servers
   gather_facts: False
   become: yes
   vars_files:
-  - ansible-vars.yaml
+    - ansible-vars.yaml
   tasks:
     - name: Log in to Amazon ECR  
       docker_login:
@@ -136,6 +123,7 @@
     - name: Show Docker images
       debug:
         msg: "{{ docker_images_output.stdout }}"
+
 - name: Start Docker containers
   hosts: servers
   gather_facts: False
@@ -160,7 +148,7 @@
       shell: |
         attempt=1
         max_attempts=30
-        until docker container inspect {{ backend_container_name }} --format '{% raw %}{{.State.Running}}{% endraw %}' 2>/dev/null | grep -q "true" || [ $attempt -eq $max_attempts ]
+        until docker container inspect {{ backend_container_name }} --format '{{.State.Running}}' 2>/dev/null | grep -q "true" || [ $attempt -eq $max_attempts ]
         do
           echo "Waiting for container to be ready... (attempt $attempt)"
           sleep 5
@@ -169,7 +157,7 @@
       register: wait_result
       failed_when: wait_result.rc != 0
     - name: Check container status
-      shell: docker ps -a --filter "name={{ backend_container_name }}" --format "{% raw %}{{.Status}}{% endraw %}"
+      shell: docker ps -a --filter "name={{ backend_container_name }}" --format "{{.Status}}"
       register: container_status
     - name: Verify database connection
       shell: |
@@ -185,15 +173,15 @@
     - name: Debug container status
       debug:
         var: container_status.stdout
-  - name: Run makemigrations inside backend container
-    command: docker exec {{ backend_container_name }} python manage.py makemigrations
-  - name: Run migrate inside backend container
-    command: docker exec {{ backend_container_name }} python manage.py migrate
-  - name: Create superuser inside backend container
-    command: >
-      docker exec {{ backend_container_name }} python manage.py shell -c
-      "from django.contrib.auth import get_user_model;
-      User = get_user_model();
-      User.objects.filter(username='{{ superuser_username }}').exists() or
-      User.objects.create_superuser('{{ superuser_username }}', '{{ superuser_email }}', '{{ superuser_password
-      }}')"
+    - name: Run makemigrations inside backend container
+      command: docker exec {{ backend_container_name }} python manage.py makemigrations
+    - name: Run migrate inside backend container
+      command: docker exec {{ backend_container_name }} python manage.py migrate
+    - name: Create superuser inside backend container
+      command: >
+        docker exec {{ backend_container_name }} python manage.py shell -c
+        "from django.contrib.auth import get_user_model;
+        User = get_user_model();
+        User.objects.filter(username='{{ superuser_username }}').exists() or
+        User.objects.create_superuser('{{ superuser_username }}', '{{ superuser_email }}', '{{ superuser_password }}')"
+
