@@ -1,38 +1,13 @@
 version: '3.8'
 services:
-  mysql:
-    image: mysql:8.0
-    container_name: mysql-db
-    restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: yourpassword
-      MYSQL_DATABASE: enis_tp
-    ports:
-      - "3307:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-    networks:
-      - app_network
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
   backend-app:
-    image: backend-app:latest
+    image: 682033469889.dkr.ecr.us-east-1.amazonaws.com/enis-app:backend-app-1.0
     container_name: backend-app
     restart: always
     ports:
-      - "9000:8000"
-    environment:
-      - DATABASE_HOST=mysql-db
-      - DATABASE_PORT=3306
-    depends_on:
-      mysql:
-        condition: service_healthy
+      - "8000:8000"
     networks:
-      - app_network
+      - my_bridge
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/admin/login/?next=/admin/ || exit 1"]
       interval: 30s
@@ -40,20 +15,13 @@ services:
       retries: 5
 
   frontend-app:
-    image: frontend-app:latest
+    image: 682033469889.dkr.ecr.us-east-1.amazonaws.com/enis-app:frontend-app-1.0
     container_name: frontend-app
     restart: always
     ports:
       - "81:80"
-    environment:
-      - BACKEND_URL=http://backend-app:8000
-    depends_on:
-      mysql:
-        condition: service_healthy
-      backend-app:
-        condition: service_healthy
     networks:
-      - app_network
+      - my_bridge
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost || exit 1"]
       interval: 30s
@@ -61,11 +29,5 @@ services:
       retries: 3
 
 networks:
-  app_network:
-    name: my_bridge
+  my_bridge:
     external: true
-
-volumes:
-  mysql_data:
-    external: true
-    name: 1be016c59a06ec8dbea9c588e925d586460ff8834378c5a440df5eb3b5c22937
