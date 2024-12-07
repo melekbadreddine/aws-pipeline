@@ -203,7 +203,7 @@ pipeline {
         stage('Update Hosts File') {
             steps {
                 script {
-                    dir('enis-ansible') {
+                    dir('ansible') {
                         sh """
                         if [ -f "hosts" ]; then
                             echo "Found hosts file at \$(pwd)"
@@ -222,7 +222,7 @@ pipeline {
         stage('Run Ansible Playbook') {
             steps {
                 script {
-                    dir('enis-ansible') {
+                    dir('ansible') {
                         sh """
                         if [ -f "docker_deploy_playbook.yml" ]; then
                             echo "Found playbook docker_deploy_playbook.yml"
