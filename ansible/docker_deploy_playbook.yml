@@ -156,31 +156,10 @@
       docker-compose up -d
     args:
       chdir: "{{ project_src_path }}"
-  - name: Wait for backend container to be healthy
-    shell: |
-      attempt=1
-      max_attempts=30
-      until docker container inspect backend-app --format '{{.State.Health.Status}}' | grep -q "healthy" || [ $attempt -gt $max_attempts ]
-      do
-        echo "Waiting for container to be healthy... (Attempt $attempt/$max_attempts)"
-        sleep 10
-        attempt=$((attempt + 1))
-      done
-      if [ $attempt -gt $max_attempts ]; then
-        echo "Container failed to become healthy after $max_attempts attempts"
-        exit 1
-      fi
-    register: health_check
-    retries: 3
-    delay: 10
-
-  - name: Debug container status if healthcheck fails
-    shell: |
-      echo "Container Logs:"
-      docker logs backend-app
-      echo "Container Status:"
-      docker inspect backend-app
-    when: health_check.rc is defined and health_check.rc != 0
+  - name: Wait for container to be ready
+    command: docker container wait backend-app
+    pause:
+      seconds: 30
   - name: Run makemigrations inside backend container
     command: docker exec {{ backend_container_name }} python manage.py makemigrations
   - name: Run migrate inside backend container
