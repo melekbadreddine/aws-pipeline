@@ -15,13 +15,6 @@ terraform {
 	version = "~> 3.0"
 	}
 	}
-  backend "s3" {
-        bucket= "custom-terraform-state-bucket-123456-efb08ee3"
-        key = "aws-remote-backend/terraform.tfstate"
-        region = "us-east-1" # AWS region
-        dynamodb_table = "custom-terraform-state-locks-123456"
-        encrypt = true # Enables encryption for the state file
-        }
 }
 
 # AWS provider configuration
